@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loafer Burger - قائمة الطعام</title>
+    <title>Loafer Burger - لوحة التحكم</title>
     
     <!-- React & ReactDOM (Cloudflare CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
@@ -15,338 +15,327 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef, useCallback } = React;
 
         const SB_URL = "https://ksbnqploabzncftwmyju.supabase.co";
         const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtzYm5xcGxvYWJ6bmNmdHdteWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4NjU2NjcsImV4cCI6MjA5NjQ0MTY2N30.3mWLMIEfuXOLJay7Wi2pYXMcgfZN1fmLXVtooKh_rkc";
 
-        const HEADERS = {
+        const H = {
           apikey: SB_KEY,
           Authorization: "Bearer " + SB_KEY,
           "Content-Type": "application/json",
           Prefer: "return=representation",
         };
 
-        async function insertOrder(payload) {
-          const r = await fetch(SB_URL + "/rest/v1/orders", {
-            method: "POST", headers: HEADERS, body: JSON.stringify(payload),
-          });
+        async function fetchOrders() {
+          const r = await fetch(SB_URL + "/rest/v1/orders?select=*&order=created_at.desc", { headers: H });
           return r.json();
         }
 
-        const MENU = [
-          { id: 1, cat: "برگر", name: "لوفر كلاسيك", desc: "لحم بقر أنقوس مع جبنة شيدر وصوص البيت السري", price: 5500, img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80" },
-          { id: 2, cat: "برگر", name: "سماش دبل", desc: "باتي مزدوج مضغوط، بصل مكرمل، خردل العسل", price: 7000, img: "https://images.unsplash.com/photo-1553979459-d2229ba7433b?w=600&q=80" },
-          { id: 3, cat: "برگر", name: "كريسبي چكن", desc: "صدر دجاج مقرمش، كول سلو، مايو الحار", price: 6000, img: "https://images.unsplash.com/photo-1606755962773-d324e0a13086?w=600&q=80" },
-          { id: 4, cat: "برگر", name: "مشروم سويس", desc: "فطر سوتيه، جبنة سويس، صوص الترفل الأسود", price: 6500, img: "https://images.unsplash.com/photo-1595295333158-4742f28fbd85?w=600&q=80" },
-          { id: 5, cat: "مقبلات", name: "فرايز كلاسيك", desc: "بطاطا ذهبية مقلية بملح البحر", price: 2500, img: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&q=80" },
-          { id: 6, cat: "مقبلات", name: "لودد فرايز", desc: "بطاطا مع جبنة ذايبة، لحم، وجالابينيو", price: 4000, img: "https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?w=600&q=80" },
-          { id: 7, cat: "مقبلات", name: "حلقات البصل", desc: "بصل مقرمش بعجينة البيرة مع صوص رانش", price: 3000, img: "https://images.unsplash.com/photo-1639024471283-03518883512d?w=600&q=80" },
-          { id: 8, cat: "مشروبات", name: "شيك شوكليت", desc: "ميلك شيك بلجيكي كثيف مع كريمة مخفوقة", price: 3500, img: "https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=600&q=80" },
-          { id: 9, cat: "مشروبات", name: "شيك فانيليا", desc: "فانيليا طبيعية مع كريمة وبسكويت", price: 3500, img: "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=600&q=80" },
-          { id: 10, cat: "مشروبات", name: "ليمونية طازجة", desc: "ليمون، نعنع، وسكر القصب الطازج", price: 2000, img: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=600&q=80" },
-        ];
-
-        const CATS = ["الكل", "برگر", "مقبلات", "مشروبات"];
+        async function updateOrderStatus(id, status) {
+          const r = await fetch(SB_URL + "/rest/v1/orders?id=eq." + id, {
+            method: "PATCH", headers: H, body: JSON.stringify({ status }),
+          });
+          return r.ok;
+        }
 
         const CSS = [
           "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Tajawal:wght@400;500;700;800;900&display=swap');",
           "*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }",
-          ":root { --bg: #0f0e0b; --surface: #1a1812; --card: #201e18; --border: #2e2a22; --gold: #c9963a; --gold2: #e8b84b; --cream: #f5ead6; --muted: #7a6e5c; --text: #ede4d3; --danger: #c04030; }",
+          ":root { --bg: #0b0d0f; --surface: #111518; --card: #171b1f; --card2: #1e2328; --border: #272d33; --gold: #c9963a; --gold2: #e8b84b; --cream: #e8dece; --muted: #6a7480; --text: #d8d0c4; --green: #3a7a4a; --green2: #4a9a5a; --blue: #2a4a8a; --blue2: #3a60b0; --red: #8a2a2a; --red2: #b03a3a; }",
           "body { font-family: 'IBM Plex Sans Arabic', sans-serif; background: var(--bg); color: var(--text); direction: rtl; min-height: 100vh; -webkit-font-smoothing: antialiased; }",
           "::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: var(--surface); } ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 2px; }",
-          "@keyframes up { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }",
-          "@keyframes pop { 0%{transform:scale(.6);opacity:0} 70%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }",
+          "@keyframes up { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }",
           "@keyframes spin { to { transform:rotate(360deg); } }",
-          "@keyframes glow { 0%,100%{box-shadow:0 0 16px rgba(201,150,58,.3)} 50%{box-shadow:0 0 32px rgba(201,150,58,.6)} }",
           "@keyframes fade { from{opacity:0} to{opacity:1} }",
+          "@keyframes ping { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.4);opacity:.6} }",
           ".tajawal { font-family: 'Tajawal', sans-serif; }",
-          "button { cursor: pointer; font-family: inherit; } input, textarea { font-family: inherit; }",
-          ".hscroll { overflow-x: auto; scrollbar-width: none; } .hscroll::-webkit-scrollbar { display: none; }"
+          "button { cursor: pointer; font-family: inherit; }",
+          ".hscroll { overflow-x: auto; scrollbar-width: none; } .hscroll::-webkit-scrollbar { display: none; }",
+          ".card-hover { transition: border-color .2s, transform .2s; } .card-hover:hover { transform: translateY(-1px); }"
         ].join(" ");
 
-        function fmt(n) { return n.toLocaleString("ar-IQ") + " د.ع"; }
+        function fmt(n) { return Number(n || 0).toLocaleString("ar-IQ") + " د.ع"; }
+
+        function timeAgo(iso) {
+          if (!iso) return "";
+          const diff = Math.floor((Date.now() - new Date(iso)) / 1000);
+          if (diff < 60) return "منذ " + diff + " ث";
+          if (diff < 3600) return "منذ " + Math.floor(diff / 60) + " د";
+          if (diff < 86400) return "منذ " + Math.floor(diff / 3600) + " سا";
+          return new Date(iso).toLocaleDateString("ar-IQ");
+        }
 
         function Toast({ msg, type, onClose }) {
-          useEffect(() => { const t = setTimeout(onClose, 2800); return () => clearTimeout(t); }, []);
+          useEffect(() => { const t = setTimeout(onClose, 2500); return () => clearTimeout(t); }, []);
+          const bg = type === "error" ? "#7a1a1a" : type === "warn" ? "#6a5010" : "#1a3a2a";
           return (
             <div style={{
-              position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)",
-              background: type === "error" ? "var(--danger)" : "#2d3a1e", color: "#fff", padding: "13px 24px",
-              borderRadius: 12, fontWeight: 600, fontSize: 14, zIndex: 9999, animation: "up .3s ease",
-              boxShadow: "0 8px 32px rgba(0,0,0,.5)", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 8,
+              position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+              background: bg, color: "#fff", padding: "12px 22px", borderRadius: 12, fontWeight: 600, fontSize: 14,
+              zIndex: 9999, animation: "up .3s ease", boxShadow: "0 8px 32px rgba(0,0,0,.6)",
+              display: "flex", alignItems: "center", gap: 8, whiteSpace: "nowrap",
             }}>
               {type === "error" ? "✕" : "✓"} {msg}
             </div>
           );
         }
 
-        function CartDrawer({ cart, onClose, onQty, onPlace }) {
-          const [table, setTable] = useState("");
-          const [note, setNote]   = useState("");
-          const [busy, setBusy]   = useState(false);
-          const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const STATUS = {
+          pending:   { label: "جديد",     color: "#e8b84b", bg: "#2a2010", dot: "#e8b84b" },
+          preparing: { label: "يتحضر",    color: "#5a8adf", bg: "#101828", dot: "#5a8adf" },
+          done:      { label: "جاهز",     color: "#5aba7a", bg: "#0f2018", dot: "#5aba7a" },
+          cancelled: { label: "ملغي",     color: "#ba5a5a", bg: "#200f0f", dot: "#ba5a5a" },
+        };
 
-          async function submit() {
-            if (!table.trim()) { alert("اكتب رقم الطاولة"); return; }
-            setBusy(true);
-            await onPlace({ table, note, total });
-            setBusy(false);
-          }
-
-          return (
-            <>
-              <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", zIndex: 200, animation: "fade .2s ease" }} />
-              <div style={{
-                position: "fixed", bottom: 0, left: 0, right: 0, background: "var(--surface)", borderRadius: "24px 24px 0 0",
-                zIndex: 201, maxHeight: "88vh", display: "flex", flexDirection: "column", animation: "up .3s ease", boxShadow: "0 -8px 48px rgba(0,0,0,.6)",
-              }}>
-                <div style={{ width: 40, height: 4, background: "var(--border)", borderRadius: 2, margin: "14px auto 0" }} />
-                <div style={{ padding: "16px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span className="tajawal" style={{ fontWeight: 800, fontSize: 20 }}>سلتك</span>
-                  <button onClick={onClose} style={{ background: "var(--card)", border: "none", color: "var(--muted)", width: 32, height: 32, borderRadius: "50%", fontSize: 16 }}>✕</button>
-                </div>
-                <div style={{ overflowY: "auto", flex: 1, padding: "12px 20px" }}>
-                  {cart.map(item => (
-                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
-                      <img src={item.img} alt={item.name} style={{ width: 56, height: 56, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>
-                        <div style={{ color: "var(--gold)", fontWeight: 700, fontSize: 14, marginTop: 2 }}>{fmt(item.price * item.qty)}</div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <QtyBtn label="−" onClick={() => onQty(item.id, -1)} />
-                        <span style={{ fontWeight: 800, fontSize: 16, minWidth: 22, textAlign: "center" }}>{item.qty}</span>
-                        <QtyBtn label="+" filled onClick={() => onQty(item.id, 1)} />
-                      </div>
-                    </div>
-                  ))}
-                  <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div>
-                      <label style={labelS}>رقم الطاولة *</label>
-                      <input value={table} onChange={e => setTable(e.target.value)} placeholder="مثلاً: 3" style={inputS} />
-                    </div>
-                    <div>
-                      <label style={labelS}>ملاحظة (اختياري)</label>
-                      <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="مثلاً: بدون بصل..." rows={2} style={{ ...inputS, resize: "none" }} />
-                    </div>
-                  </div>
-                </div>
-                <div style={{ padding: "16px 20px 28px", borderTop: "1px solid var(--border)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-                    <span style={{ color: "var(--muted)", fontWeight: 600 }}>المجموع</span>
-                    <span className="tajawal" style={{ color: "var(--gold2)", fontWeight: 900, fontSize: 20 }}>{fmt(total)}</span>
-                  </div>
-                  <button onClick={submit} disabled={busy} style={{
-                    width: "100%", padding: "15px", background: "linear-gradient(135deg, var(--gold), var(--gold2))",
-                    border: "none", borderRadius: 14, color: "#0f0e0b", fontFamily: "'Tajawal', sans-serif",
-                    fontWeight: 900, fontSize: 17, opacity: busy ? .7 : 1, transition: "transform .15s", boxShadow: "0 4px 20px rgba(201,150,58,.4)",
-                  }}>
-                    {busy ? "يُرسَل..." : "أرسل الطلب 🚀"}
-                  </button>
-                </div>
-              </div>
-            </>
-          );
-        }
-
-        function QtyBtn({ label, onClick, filled }) {
-          return (
-            <button onClick={onClick} style={{
-              width: 30, height: 30, borderRadius: 8, background: filled ? "var(--gold)" : "var(--card)",
-              border: "1px solid var(--border)", color: filled ? "#0f0e0b" : "var(--text)", fontWeight: 900, fontSize: 16,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>{label}</button>
-          );
-        }
-
-        function SuccessScreen({ orderId, onReset }) {
+        function StatCard({ icon, label, value, color, sub, i }) {
           return (
             <div style={{
-              position: "fixed", inset: 0, background: "var(--bg)", display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center", zIndex: 300, animation: "fade .4s ease", textAlign: "center", padding: 32,
+              background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16,
+              padding: "18px 20px", animation: "up .35s ease " + (i * 0.08) + "s both",
             }}>
-              <div style={{ fontSize: 80, animation: "glow 2s ease infinite, pop .5s ease" }}>🍔</div>
-              <h1 className="tajawal" style={{
-                fontSize: 36, fontWeight: 900, marginTop: 24, background: "linear-gradient(135deg, var(--gold), var(--gold2))",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-              }}>طلبك وصل!</h1>
-              <p style={{ color: "var(--muted)", marginTop: 8, fontSize: 15, lineHeight: 1.7 }}>المطبخ استلم طلبك<br />اصبر شوية وراح يجيلك</p>
-              {orderId && (
-                <div style={{ marginTop: 28, background: "var(--card)", border: "1px solid var(--border)", borderRadius: 16, padding: "18px 40px" }}>
-                  <div style={{ color: "var(--muted)", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>رقم طلبك</div>
-                  <div className="tajawal" style={{ fontSize: 42, fontWeight: 900, color: "var(--gold)" }}>
-                    {"#" + String(orderId).slice(-4)}
-                  </div>
-                </div>
-              )}
-              <button onClick={onReset} style={{
-                marginTop: 32, padding: "13px 36px", background: "var(--card)", border: "1px solid var(--border)",
-                borderRadius: 12, color: "var(--text)", fontFamily: "'Tajawal', sans-serif", fontWeight: 700, fontSize: 15,
-              }}>طلب جديد</button>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
+              <div className="tajawal" style={{ fontSize: 28, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginTop: 4 }}>{label}</div>
+              {sub && <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, marginTop: 6 }}>{sub}</div>}
             </div>
           );
         }
 
-        function CustomerApp() {
-          const [cat, setCat]       = useState("الكل");
-          const [cart, setCart]     = useState([]);
-          const [drawer, setDrawer] = useState(false);
-          const [done, setDone]     = useState(null);
-          const [toast, setToast]   = useState(null);
+        function OrderCard({ order, onUpdate, i }) {
+          const [busy, setBusy] = useState(false);
+          const sc = STATUS[order.status] || STATUS.pending;
 
-          const items = cat === "الكل" ? MENU : MENU.filter(i => i.cat === cat);
-          const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+          let items = [];
+          try { items = typeof order.items === "string" ? JSON.parse(order.items) : (order.items || []); } catch {}
 
-          function addToCart(item) {
-            setCart(prev => {
-              const ex = prev.find(i => i.id === item.id);
-              return ex ? prev.map(i => i.id === item.id ? { ...i, qty: i.qty + 1 } : i) : [...prev, { ...item, qty: 1 }];
-            });
-            setToast({ msg: "انضاف " + item.name, type: "ok" });
+          async function handleUpdate(status) {
+            setBusy(true);
+            await onUpdate(order.id, status);
+            setBusy(false);
           }
 
-          function changeQty(id, d) {
-            setCart(prev => prev.map(i => i.id === id ? { ...i, qty: i.qty + d } : i).filter(i => i.qty > 0));
-          }
+          const isNew = order.status === "pending";
 
-          async function placeOrder({ table, note, total }) {
-            if (cart.length === 0) return;
+          return (
+            <div className="card-hover" style={{
+              background: "var(--card)", border: "1px solid " + (isNew ? "rgba(232,184,75,.35)" : "var(--border)"),
+              borderRadius: 18, overflow: "hidden", animation: "up .35s ease " + (i * 0.06) + "s both",
+              boxShadow: isNew ? "0 0 0 1px rgba(232,184,75,.15), 0 8px 32px rgba(0,0,0,.3)" : "none",
+            }}>
+              <div style={{
+                background: isNew ? "rgba(232,184,75,.06)" : "var(--card2)", padding: "14px 18px",
+                display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {isNew && (
+                    <span style={{ position: "relative", display: "inline-block", width: 10, height: 10 }}>
+                      <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--gold)", animation: "ping 1.5s ease infinite" }} />
+                      <span style={{ position: "absolute", inset: 1, borderRadius: "50%", background: "var(--gold2)" }} />
+                    </span>
+                  )}
+                  <div>
+                    <span className="tajawal" style={{ fontWeight: 900, fontSize: 18, color: "var(--cream)" }}>طاولة {order.table_number}</span>
+                    <span style={{ color: "var(--muted)", fontSize: 12, marginRight: 8 }}>{"#" + String(order.id).slice(-5)} · {timeAgo(order.created_at)}</span>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className="tajawal" style={{ fontWeight: 900, fontSize: 18, color: "var(--gold2)" }}>{fmt(order.total)}</span>
+                  <span style={{
+                    background: sc.bg, color: sc.color, borderRadius: 8, padding: "4px 12px", fontSize: 12, fontWeight: 700,
+                    border: "1px solid " + sc.color + "22",
+                  }}>{sc.label}</span>
+                </div>
+              </div>
+
+              <div style={{ padding: "12px 18px" }}>
+                {items.map((item, j) => (
+                  <div key={j} style={{
+                    display: "flex", justifyContent: "space-between", padding: "6px 0",
+                    borderBottom: j < items.length - 1 ? "1px solid var(--border)" : "none", fontSize: 13,
+                  }}>
+                    <span style={{ color: "var(--text)" }}>
+                      {(item.emoji ? item.emoji + " " : "") + (item.name_ar || item.name)}
+                      <span style={{
+                        background: "var(--card2)", border: "1px solid var(--border)", borderRadius: 6, padding: "1px 7px", fontSize: 11,
+                        color: "var(--gold)", fontWeight: 700, marginRight: 6,
+                      }}>×{item.qty}</span>
+                    </span>
+                    <span style={{ color: "var(--muted)" }}>{fmt(item.price * item.qty)}</span>
+                  </div>
+                ))}
+                {order.notes && (
+                  <div style={{
+                    marginTop: 10, background: "rgba(232,184,75,.07)", border: "1px solid rgba(232,184,75,.2)",
+                    borderRadius: 10, padding: "8px 12px", fontSize: 12, color: "var(--gold)", fontStyle: "italic",
+                  }}>📝 {order.notes}</div>
+                )}
+              </div>
+
+              <div style={{
+                padding: "12px 18px 16px", borderTop: "1px solid var(--border)", display: "flex", gap: 8, flexWrap: "wrap",
+              }}>
+                {order.status === "pending" && <ActionBtn label="ابدأ التحضير 👨‍🍳" color={["var(--blue)", "var(--blue2)"]} onClick={() => handleUpdate("preparing")} disabled={busy} />}
+                {order.status === "preparing" && <ActionBtn label="جاهز للتسليم ✅" color={["var(--green)", "var(--green2)"]} onClick={() => handleUpdate("done")} disabled={busy} />}
+                {(order.status === "pending" || order.status === "preparing") && <ActionBtn label="إلغاء" color={["var(--red)", "var(--red2)"]} onClick={() => handleUpdate("cancelled")} disabled={busy} ghost />}
+                {(order.status === "done" || order.status === "cancelled") && <span style={{ color: "var(--muted)", fontSize: 12, fontWeight: 600, padding: "8px 0" }}>{order.status === "done" ? "✅ تم التسليم" : "❌ ملغي"}</span>}
+              </div>
+            </div>
+          );
+        }
+
+        function ActionBtn({ label, color, onClick, disabled, ghost }) {
+          return (
+            <button onClick={onClick} disabled={disabled} style={{
+              padding: "9px 18px", borderRadius: 10, fontWeight: 700, fontSize: 13,
+              border: ghost ? "1px solid " + color[0] : "none",
+              background: ghost ? "transparent" : "linear-gradient(135deg, " + color[0] + ", " + color[1] + ")",
+              color: ghost ? color[1] : "#fff", opacity: disabled ? .6 : 1, transition: "opacity .15s, transform .15s",
+              fontFamily: "'Tajawal', sans-serif",
+            }}>{disabled ? "..." : label}</button>
+          );
+        }
+
+        function AdminApp() {
+          const [orders, setOrders]   = useState([]);
+          const [loading, setLoading] = useState(true);
+          const [filter, setFilter]   = useState("all");
+          const [toast, setToast]     = useState(null);
+          const [lastCount, setLastCount] = useState(0);
+          const timerRef = useRef(null);
+
+          const load = useCallback(async (silent = false) => {
+            if (!silent) setLoading(true);
             try {
-              const res = await insertOrder({
-                table_number: table, items: JSON.stringify(cart), total, notes: note,
-                status: "pending", created_at: new Date().toISOString(),
-              });
-              const id = Array.isArray(res) ? res[0]?.id : res?.id;
-              setDone(id || Math.floor(Math.random() * 9000 + 1000));
-            } catch {
-              setDone(Math.floor(Math.random() * 9000 + 1000));
+              const data = await fetchOrders();
+              if (Array.isArray(data)) {
+                setOrders(data);
+                const pending = data.filter(o => o.status === "pending").length;
+                if (pending > lastCount && lastCount > 0) {
+                  setToast({ msg: "جاء طلب جديد! 🔔", type: "warn" });
+                }
+                setLastCount(pending);
+              }
+            } catch { /* offline */ }
+            if (!silent) setLoading(false);
+          }, [lastCount]);
+
+          useEffect(() => {
+            load();
+            timerRef.current = setInterval(() => load(true), 12000);
+            return () => clearInterval(timerRef.current);
+          }, []);
+
+          async function handleUpdate(id, status) {
+            const ok = await updateOrderStatus(id, status);
+            if (ok) {
+              setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+              const labels = { preparing: "بدأ التحضير 👨‍🍳", done: "جاهز ✅", cancelled: "ملغي ❌" };
+              setToast({ msg: labels[status] || "تم التحديث", type: "ok" });
+            } else {
+              setToast({ msg: "صار خطأ، حاول ثاني", type: "error" });
             }
-            setCart([]);
-            setDrawer(false);
           }
 
-          if (done !== null) {
-            return (
-              <>
-                <style>{CSS}</style>
-                <SuccessScreen orderId={done} onReset={() => setDone(null)} />
-              </>
-            );
-          }
+          const total    = orders.length;
+          const pending  = orders.filter(o => o.status === "pending").length;
+          const preparing = orders.filter(o => o.status === "preparing").length;
+          const done     = orders.filter(o => o.status === "done").length;
+          const revenue  = orders.filter(o => o.status !== "cancelled").reduce((s, o) => s + (o.total || 0), 0);
+
+          const FILTERS = [
+            { key: "all",       label: "الكل (" + total + ")" },
+            { key: "pending",   label: "جديد (" + pending + ")" },
+            { key: "preparing", label: "يتحضر (" + preparing + ")" },
+            { key: "done",      label: "جاهز (" + done + ")" },
+            { key: "cancelled", label: "ملغي" },
+          ];
+
+          const visible = filter === "all" ? orders : orders.filter(o => o.status === filter);
 
           return (
             <>
               <style>{CSS}</style>
-              {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
-              {drawer && cart.length > 0 && <CartDrawer cart={cart} onClose={() => setDrawer(false)} onQty={changeQty} onPlace={placeOrder} />}
+              {toast && <Toast {...toast} onClose={() => setToast(null)} />}
 
-              <header style={{
-                background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "0 20px", height: 60,
-                display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, var(--gold), var(--gold2))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🍔</div>
-                  <div>
-                    <div className="tajawal" style={{ fontWeight: 900, fontSize: 16, lineHeight: 1, color: "var(--cream)" }}>LOAFER</div>
-                    <div style={{ fontSize: 9, letterSpacing: 3, color: "var(--gold)", fontWeight: 600, lineHeight: 1 }}>BURGER</div>
-                  </div>
-                </div>
-                <button onClick={() => cartCount > 0 && setDrawer(true)} style={{
-                  position: "relative", background: cartCount > 0 ? "var(--gold)" : "var(--card)", border: "1px solid var(--border)",
-                  borderRadius: 10, padding: "8px 14px", color: cartCount > 0 ? "#0f0e0b" : "var(--muted)", display: "flex", alignItems: "center", gap: 6,
-                  fontWeight: 700, fontSize: 14, transition: "all .2s",
+              <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+                <header style={{
+                  background: "var(--surface)", borderBottom: "1px solid var(--border)", padding: "0 24px", height: 62,
+                  display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100,
                 }}>
-                  🛒
-                  {cartCount > 0 && (
-                    <span style={{
-                      background: "#0f0e0b", color: "var(--gold)", borderRadius: "50%", width: 20, height: 20, fontSize: 11,
-                      display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, animation: "pop .3s ease",
-                    }}>{cartCount}</span>
-                  )}
-                </button>
-              </header>
-
-              <div style={{ position: "relative", height: 220, overflow: "hidden" }}>
-                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=1200&q=80" alt="hero" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 40%" }} />
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(15,14,11,.2) 0%, rgba(15,14,11,.85) 100%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "20px 22px" }}>
-                  <div className="tajawal" style={{ fontSize: 13, color: "var(--gold)", fontWeight: 700, letterSpacing: 2, marginBottom: 4 }}>أهلاً وسهلاً</div>
-                  <h1 className="tajawal" style={{ fontSize: 32, fontWeight: 900, lineHeight: 1.15, color: "#fff" }}>اختار طلبك<br /><span style={{ color: "var(--gold2)" }}>وأحنا نوصله</span></h1>
-                </div>
-              </div>
-
-              <div className="hscroll" style={{ display: "flex", gap: 8, padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 60, zIndex: 90 }}>
-                {CATS.map(c => (
-                  <button key={c} onClick={() => setCat(c)} style={{
-                    flexShrink: 0, padding: "8px 20px", borderRadius: 20, background: cat === c ? "var(--gold)" : "var(--card)",
-                    border: cat === c ? "none" : "1px solid var(--border)", color: cat === c ? "#0f0e0b" : "var(--muted)",
-                    fontFamily: "'Tajawal', sans-serif", fontWeight: 700, fontSize: 14, transition: "all .18s",
-                  }}>{c}</button>
-                ))}
-              </div>
-
-              <div style={{ padding: "16px 16px 100px" }}>
-                {items.map((item, i) => {
-                  const inCart = cart.find(c => c.id === item.id);
-                  return (
-                    <div key={item.id} style={{
-                      background: "var(--card)", border: "1px solid " + (inCart ? "var(--gold)" : "var(--border)"),
-                      borderRadius: 18, marginBottom: 14, overflow: "hidden", animation: "up .35s ease " + (i * 0.05) + "s both", transition: "border-color .2s",
-                    }}>
-                      <div style={{ position: "relative", height: 180 }}>
-                        <img src={item.img} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 50%, rgba(32,30,24,.95) 100%)" }} />
-                        <span style={{ position: "absolute", top: 12, right: 12, background: "rgba(15,14,11,.7)", backdropFilter: "blur(8px)", border: "1px solid var(--border)", borderRadius: 8, padding: "3px 10px", fontSize: 11, color: "var(--gold)", fontWeight: 700 }}>{item.cat}</span>
-                        <div style={{ position: "absolute", bottom: 12, left: 12 }}>
-                          <span className="tajawal" style={{ fontSize: 20, fontWeight: 900, color: "var(--gold2)" }}>{fmt(item.price)}</span>
-                        </div>
-                      </div>
-                      <div style={{ padding: "14px 16px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12 }}>
-                        <div style={{ flex: 1 }}>
-                          <div className="tajawal" style={{ fontWeight: 800, fontSize: 17, color: "var(--cream)", marginBottom: 4 }}>{item.name}</div>
-                          <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>{item.desc}</div>
-                        </div>
-                        {inCart ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                            <QtyBtn label="−" onClick={() => changeQty(item.id, -1)} />
-                            <span style={{ fontWeight: 900, fontSize: 18, color: "var(--gold)", minWidth: 24, textAlign: "center" }}>{inCart.qty}</span>
-                            <QtyBtn label="+" filled onClick={() => changeQty(item.id, 1)} />
-                          </div>
-                        ) : (
-                          <button onClick={() => addToCart(item)} style={{
-                            flexShrink: 0, padding: "10px 18px", background: "linear-gradient(135deg, var(--gold), var(--gold2))", border: "none",
-                            borderRadius: 12, color: "#0f0e0b", fontFamily: "'Tajawal', sans-serif", fontWeight: 800, fontSize: 14, boxShadow: "0 4px 16px rgba(201,150,58,.3)", transition: "transform .15s",
-                          }}>أضف +</button>
-                        )}
-                      </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg, var(--gold), var(--gold2))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🍔</div>
+                    <div>
+                      <div className="tajawal" style={{ fontWeight: 900, fontSize: 16, lineHeight: 1, color: "var(--cream)" }}>LOAFER BURGER</div>
+                      <div style={{ fontSize: 9, letterSpacing: 3, color: "var(--gold)", lineHeight: 1 }}>ADMIN PANEL</div>
                     </div>
-                  );
-                })}
-              </div>
+                    <div style={{ background: "rgba(90,186,122,.12)", border: "1px solid rgba(90,186,122,.3)", borderRadius: 20, padding: "3px 10px", display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#5aba7a", animation: "ping 2s ease infinite", display: "inline-block" }} />
+                      <span style={{ fontSize: 11, color: "#5aba7a", fontWeight: 700 }}>مباشر</span>
+                    </div>
+                  </div>
 
-              {cartCount > 0 && !drawer && (
-                <div style={{
-                  position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 20px 20px", background: "linear-gradient(to top, var(--bg) 70%, transparent)", zIndex: 150,
-                }}>
-                  <button onClick={() => setDrawer(true)} style={{
-                    width: "100%", padding: "15px", background: "linear-gradient(135deg, var(--gold), var(--gold2))", border: "none", borderRadius: 16,
-                    color: "#0f0e0b", fontFamily: "'Tajawal', sans-serif", fontWeight: 900, fontSize: 17, display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 6px 28px rgba(201,150,58,.45)",
-                  }}>
-                    <span style={{ background: "rgba(0,0,0,.2)", borderRadius: 8, padding: "3px 10px", fontSize: 14 }}>{cartCount} صنف</span>
-                    <span>عرض السلة 🛒</span>
-                    <span>{fmt(cart.reduce((s, i) => s + i.price * i.qty, 0))}</span>
-                  </button>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    {pending > 0 && (
+                      <div style={{ background: "rgba(232,184,75,.12)", border: "1px solid rgba(232,184,75,.3)", borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 700, color: "var(--gold2)", display: "flex", alignItems: "center", gap: 6 }}>
+                        🔔 {pending} طلب جديد
+                      </div>
+                    )}
+                    <button onClick={() => load()} style={{ background: "var(--card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "7px 14px", color: "var(--muted)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>↺ تحديث</button>
+                  </div>
+                </header>
+
+                <div style={{ flex: 1, padding: "24px 20px 80px", maxWidth: 800, margin: "0 auto", width: "100%" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12, marginBottom: 24 }}>
+                    <StatCard icon="📋" label="طلبات اليوم" value={total} color="var(--cream)" i={0} />
+                    <StatCard icon="🔔" label="طلبات جديدة" value={pending} color="var(--gold2)" sub={pending > 0 ? "يحتاج انتباهك!" : undefined} i={1} />
+                    <StatCard icon="👨‍🍳" label="قيد التحضير" value={preparing} color="#5a8adf" i={2} />
+                    <StatCard icon="💰" label="إيرادات اليوم" value={fmt(revenue)} color="#5aba7a" i={3} />
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                    <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                    <span className="tajawal" style={{ fontWeight: 800, fontSize: 16, color: "var(--cream)" }}>الطلبات</span>
+                    <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+                  </div>
+
+                  <div className="hscroll" style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+                    {FILTERS.map(f => (
+                      <button key={f.key} onClick={() => setFilter(f.key)} style={{
+                        flexShrink: 0, padding: "8px 16px", borderRadius: 20, background: filter === f.key ? "var(--gold)" : "var(--card)",
+                        border: filter === f.key ? "none" : "1px solid var(--border)", color: filter === f.key ? "#0b0d0f" : "var(--muted)",
+                        fontFamily: "'Tajawal', sans-serif", fontWeight: 700, fontSize: 13, transition: "all .18s",
+                      }}>{f.label}</button>
+                    ))}
+                  </div>
+
+                  {loading ? (
+                    <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
+                      <div style={{ width: 36, height: 36, border: "3px solid var(--border)", borderTop: "3px solid var(--gold)", borderRadius: "50%", animation: "spin .8s linear infinite" }} />
+                    </div>
+                  ) : visible.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: "64px 0", animation: "fade .4s ease" }}>
+                      <div style={{ fontSize: 56, marginBottom: 16 }}>📭</div>
+                      <div className="tajawal" style={{ fontSize: 20, fontWeight: 800, color: "var(--muted)" }}>ماكو طلبات هنا</div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                      {visible.map((order, i) => <OrderCard key={order.id} order={order} onUpdate={handleUpdate} i={i} />)}
+                    </div>
+                  )}
                 </div>
-              )}
+
+                <div style={{ borderTop: "1px solid var(--border)", padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--surface)" }}>
+                  <span style={{ fontSize: 11, color: "var(--muted)" }}>آخر تحديث: {new Date().toLocaleTimeString("ar-IQ")}</span>
+                  <span className="tajawal" style={{ fontSize: 12, color: "var(--gold)", fontWeight: 700 }}>Loafer Burger © 2026</span>
+                </div>
+              </div>
             </>
           );
         }
 
-        const labelS = { display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6 };
-        const inputS = { width: "100%", padding: "11px 14px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, color: "var(--text)", fontSize: 14, outline: "none" };
-
         const root = ReactDOM.createRoot(document.getElementById("root"));
-        root.render(<CustomerApp />);
+        root.render(<AdminApp />);
     </script>
 </body>
 </html>
